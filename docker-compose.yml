@@ -1,0 +1,43 @@
+version: "3.8"
+
+services:
+  db:
+    platform: linux/x86_64
+    image: mysql:latest
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: 1
+    volumes:
+      - ./db:/docker-entrypoint-initdb.d
+    ports:
+      - 3306:3306
+    hostname: db
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  app:
+    build:
+      context: app
+      dockerfile: Dockerfile
+    command: air
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_NAME: withdrawal_service
+      DB_PORT: 3306
+      DB_USERNAME: root
+      DB_CHARSET: utf8mb4
+      DB_COLLATION: utf8mb4_unicode_ci
+      DB_PARSE_TIME: "true"
+      DB_LOCATION: Local
+    ports:
+      - 3000:3000
+    volumes:
+      - .:/workspace
+      - go-data:/go
+    working_dir: /workspace/app
+volumes:
+  go-data:
