@@ -24,6 +24,7 @@ func main() {
 	}
 	r := gin.Default()
 	r.GET("/_healthcheck", api.Healthcheck)
+	r.POST("/histories", api.CreateHistory)
 	if err := r.Run(":3000"); err != nil {
 		log.Fatal(err)
 	}
