@@ -26,6 +26,16 @@ func CreateHistory(c *gin.Context) {
 		Amount: req.Amount,
 	}
 
+	// トランザクション分離レベルをREAD COMMITTEDに変更する(デフォルトはREPEATABLE READ)
+	// @why: ギャップロックを無効化することによりデッドロックを回避するため。
+	// SELECT...FOR UPDATE句の取得結果がNULLであった場合にネクストキーロックとしてuser_idの「-∞ ～ +∞（ギャップ上）」へ排他ロックがかかる。
+	// さらにギャップ X ロックの効果はギャップ S ロックと同じであるため、この共有ロックが重複した場合にデッドロックとなり得る。
+	// ref: https://dev.mysql.com/doc/refman/5.6/ja/innodb-record-level-locks.html
+	if err := db.Conn.Exec("SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED").Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"msg": err.Error()})
+		return
+	}
+
 	// 一日の最大出金金額を超えてないかチェックして出金履歴を登録するトランザクション開始
 	tx := db.Conn.Begin()
 	defer func() {
